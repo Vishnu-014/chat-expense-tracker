@@ -1,0 +1,23 @@
+const box = {
+  innerPinkBox: '#F9F5F7',
+  dot: '#C39EAB',
+  text: '#5C5C5C',
+  icon: '#BA5D6E',
+};
+
+export const COLORS = {
+  EXPENSE: '#E55F78',
+  INCOME: '#74C4BB',
+  INVESTMENTS: '#A3CDF3',
+  SAVINGS: '#F6DB87',
+  BACKGROUND: '#152D37',
+  BAR_EXPENSE: '#C43D4F',
+  EXPENSE_LINE: '#c01d33ff',
+  BAR_INCOME: '#53A292',
+  BAR_INVESTMENT: '#82ABCA',
+  BAR_SAVINGS: '#D5B95E',
+  BAR_FADED_EXPENSE: 'rgba(196, 61, 79, 0.4)',
+  BAR_FADED_INCOME: 'rgba(83, 162, 146, 0.4)',
+  BAR_FADED_INVESTMENT: 'rgba(130, 171, 202, 0.4)',
+  BAR_FADED_SAVINGS: 'rgba(213, 185, 94, 0.4)',
+};
