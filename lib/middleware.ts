@@ -1,10 +1,20 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, extractTokenFromHeader } from './auth';
 
-export function withAuth(handler: Function) {
-  return async (request: Request, context?: any) => {
-    console.log('request => ', request);
+type AppRouteContext<P = any> = {
+  params?: Promise<P>;
+};
 
+export function withAuth<P>(
+  handler: (
+    request: NextRequest,
+    context: AppRouteContext<P>
+  ) => Promise<Response>
+) {
+  return async (
+    request: NextRequest,
+    context: AppRouteContext<P>
+  ): Promise<Response> => {
     const authHeader = request.headers.get('authorization');
     const token = extractTokenFromHeader(authHeader);
 
@@ -23,7 +33,6 @@ export function withAuth(handler: Function) {
       );
     }
 
-    // Add user info to request
     (request as any).user = payload;
 
     return handler(request, context);
