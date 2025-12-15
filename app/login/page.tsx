@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Sparkles,
 } from 'lucide-react';
+import Image from 'next/image';
 
 const COLORS = {
   EXPENSE: '#E55F78',
@@ -118,14 +119,11 @@ export default function AuthPage() {
       <div className="relative z-10 w-full max-w-md">
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
           <div className="p-8 text-center">
-            <div
-              className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4"
-              style={{
-                backgroundColor: COLORS.EXPENSE,
-                animation: 'bounce 2s infinite',
-              }}
-            >
-              <Sparkles className="w-8 h-8 text-white" />
+            <div className="relative mb-4 flex justify-center">
+              <div className="absolute inset-0 w-24 h-24 mx-auto rounded-full blur-xl opacity-70 bg-linear-to-r from-[#E55F78] via-[#74C4BB] to-[#A3CDF3]" />
+              <div className="relative w-20 h-20 rounded-full bg-white/10 backdrop-blur-lg flex items-center justify-center border border-white/20">
+                <Image src="/logo.png" alt="logo" width={60} height={60} />
+              </div>
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">
               {isLogin ? 'Welcome Back!' : 'Create Account'}

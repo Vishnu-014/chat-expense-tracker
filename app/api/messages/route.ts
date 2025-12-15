@@ -43,8 +43,6 @@ Important: Return ONLY valid JSON, no markdown formatting, no explanatory text.`
 }
 
 async function getHandler(request: NextRequest) {
-  console.log('req', request);
-
   try {
     const user = (request as any).user;
 
@@ -55,6 +53,33 @@ async function getHandler(request: NextRequest) {
       .limit(100)
       .toArray();
 
+    // Calculate totals
+    const totals = {
+      expense: 0,
+      income: 0,
+      investments: 0,
+      savings: 0,
+    };
+
+    messages.forEach((msg) => {
+      if (msg.parsedData) {
+        switch (msg.parsedData.transaction_type) {
+          case 'EXPENSE':
+            totals.expense += msg.parsedData.amount;
+            break;
+          case 'INCOME':
+            totals.income += msg.parsedData.amount;
+            break;
+          case 'INVESTMENTS':
+            totals.investments += msg.parsedData.amount;
+            break;
+          case 'SAVINGS':
+            totals.savings += msg.parsedData.amount;
+            break;
+        }
+      }
+    });
+
     const formattedMessages = messages.map((msg) => ({
       ...msg,
       id: msg._id.toString(),
@@ -64,6 +89,7 @@ async function getHandler(request: NextRequest) {
     return NextResponse.json({
       success: true,
       messages: formattedMessages.reverse(),
+      totals,
     });
   } catch (error: any) {
     console.error('Error fetching messages:', error);
@@ -73,7 +99,6 @@ async function getHandler(request: NextRequest) {
     );
   }
 }
-
 async function postHandler(request: NextRequest) {
   try {
     const user = (request as any).user;
