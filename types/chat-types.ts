@@ -1,15 +1,15 @@
 export type ChatMessage = {
   id: string;
-  inputText: string; 
-  parsedData: ParsedData | null; 
+  inputText: string;
+  parsedData: ParsedData | null;
   createdAt: string;
 };
 
 type ParsedData = {
-  text: string; 
+  text: string;
   amount: number;
   category: string;
-  transaction_type: 'EXPENSE' | 'INCOME' | 'INVESTMENTS';
+  transaction_type: 'EXPENSE' | 'INCOME' | 'INVESTMENTS' | 'SAVINGS';
   tags: string[];
   sentiment?: number;
   location?: string;

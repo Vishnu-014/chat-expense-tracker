@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCollection, COLLECTIONS } from '@/lib/db-utils';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { withAuth } from '@/lib/middleware';
@@ -42,7 +42,7 @@ Important: Return ONLY valid JSON, no markdown formatting, no explanatory text.`
   }
 }
 
-async function getHandler(request: Request) {
+async function getHandler(request: NextRequest) {
   console.log('req', request);
 
   try {
@@ -74,8 +74,7 @@ async function getHandler(request: Request) {
   }
 }
 
-async function postHandler(request: Request) {
-  console.log('req', request);
+async function postHandler(request: NextRequest) {
   try {
     const user = (request as any).user;
     const { inputText } = await request.json();

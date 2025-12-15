@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import {
   Eye,
   EyeOff,
@@ -15,10 +17,8 @@ const COLORS = {
   EXPENSE: '#E55F78',
   INCOME: '#74C4BB',
   INVESTMENTS: '#A3CDF3',
-  SAVINGS: '#F6DB87',
   BACKGROUND: '#152D37',
 };
-
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -30,8 +30,10 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const { login } = useAuth();
+  const router = useRouter();
+
+  const handleSubmit = async () => {
     setError('');
     setIsLoading(true);
 
@@ -46,9 +48,9 @@ export default function AuthPage() {
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem('auth_token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href = '/chat';
+        // Use auth context login
+        login(data.token, data.user);
+        router.push('/chat');
       } else {
         setError(data.error || 'Authentication failed');
       }

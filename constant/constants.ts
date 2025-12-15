@@ -1,4 +1,4 @@
-const box = {
+export const CHAT_MESSAGE_CARD = {
   innerPinkBox: '#F9F5F7',
   dot: '#C39EAB',
   text: '#5C5C5C',
