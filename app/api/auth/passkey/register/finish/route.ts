@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     );
 
     if (!alreadyExists) {
-      await usersCollection.updateOne(
+      await (usersCollection as any).updateOne(
         { _id: new ObjectId(user._id) },
         {
           $push: {
@@ -77,7 +77,9 @@ export async function POST(request: Request) {
               credentialID: credentialIDString,
               credentialPublicKey: publicKeyString,
               counter: credential.counter,
-              transports: credential.transports ?? attestationResponse.response.transports,
+              transports:
+                credential.transports ??
+                attestationResponse.response.transports,
               deviceType: credentialDeviceType,
               backedUp: credentialBackedUp,
               attestationObject:
