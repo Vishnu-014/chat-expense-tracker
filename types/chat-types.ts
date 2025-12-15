@@ -1,7 +1,10 @@
-export type ChatMessage = {
+type ChatMessage = {
+  _id?: string;
   id: string;
+  userId: string;
   inputText: string;
   parsedData: ParsedData | null;
+  isFavorite?: boolean;
   createdAt: string;
 };
 

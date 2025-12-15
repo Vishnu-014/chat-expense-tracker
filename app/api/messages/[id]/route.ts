@@ -1,46 +1,82 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { getCollection, COLLECTIONS } from '@/lib/db-utils';
+import { withAuth } from '@/lib/middleware';
 
-export async function PATCH(
+async function patchHandler(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params?: Promise<{ id: string }> }
 ) {
-  const { id } = await params; // 👈 IMPORTANT
 
+  if (!params) {
+    return NextResponse.json(
+      { error: 'Missing route params' },
+      { status: 400 }
+    );
+  }
+
+  const { id } = await params;
   const updates = await request.json();
-  const collection = await getCollection(COLLECTIONS.MESSAGES);
 
-  const result = await collection.updateOne(
-    { _id: new ObjectId(id) },
-    { $set: updates }
-  );
+  try {
+    const collection = await getCollection(COLLECTIONS.MESSAGES);
 
-  if (result.matchedCount === 0) {
-    return NextResponse.json({ error: 'Message not found' }, { status: 404 });
+    const result = await collection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updates }
+    );
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: 'Message not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Message updated successfully',
+    });
+  } catch (error: any) {
+    console.error('Error updating message:', error);
+    return NextResponse.json(
+      { error: 'Failed to update message', details: error.message },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({
-    success: true,
-    message: 'Message updated successfully',
-  });
 }
 
-export async function DELETE(
+async function deleteHandler(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params?: Promise<{ id: string }> }
 ) {
-  const { id } = await params; // 👈 IMPORTANT
 
-  const collection = await getCollection(COLLECTIONS.MESSAGES);
-  const result = await collection.deleteOne({ _id: new ObjectId(id) });
-
-  if (result.deletedCount === 0) {
-    return NextResponse.json({ error: 'Message not found' }, { status: 404 });
+  if (!params) {
+    return NextResponse.json(
+      { error: 'Missing route params' },
+      { status: 400 }
+    );
   }
 
-  return NextResponse.json({
-    success: true,
-    message: 'Message deleted successfully',
-  });
+  const { id } = await params;
+
+  try {
+    const collection = await getCollection(COLLECTIONS.MESSAGES);
+    const result = await collection.deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ error: 'Message not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Message deleted successfully',
+    });
+  } catch (error: any) {
+    console.error('Error deleting message:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete message', details: error.message },
+      { status: 500 }
+    );
+  }
 }
+
+export const PATCH = withAuth(patchHandler);
+export const DELETE = withAuth(deleteHandler);

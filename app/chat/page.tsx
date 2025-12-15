@@ -48,6 +48,7 @@ import {
   ChevronDown,
   ChartCandlestick,
 } from 'lucide-react';
+import EditTransactionModal from '@/components/edit-transaction-modal';
 
 type ChatMessage = {
   _id?: string;
@@ -55,6 +56,7 @@ type ChatMessage = {
   userId: string;
   inputText: string;
   parsedData: ParsedData | null;
+  isFavorite: boolean;
   createdAt: string;
 };
 
@@ -335,6 +337,7 @@ function ExpenseTrackerContent() {
       userId: user.id,
       inputText: cleanInput,
       parsedData: null,
+      isFavorite: false,
       createdAt: new Date().toISOString(),
     };
 
@@ -476,6 +479,124 @@ function ExpenseTrackerContent() {
       console.error('Logout error:', error);
     } finally {
       logout();
+    }
+  };
+
+  // Add state for edit modal
+  const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(
+    null
+  );
+
+  // Toggle favorite
+  const toggleFavorite = async (msgId: string, currentFavorite: boolean) => {
+    if (!token) return;
+
+    try {
+      const response = await fetch(`/api/messages/${msgId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          isFavorite: !currentFavorite,
+        }),
+      });
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
+
+      if (response.ok) {
+        setMessages(
+          messages.map((msg) =>
+            msg.id === msgId ? { ...msg, isFavorite: !currentFavorite } : msg
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
+  };
+
+  // Add tag
+  const addTag = async (msgId: string, newTag: string) => {
+    if (!token) return;
+
+    const message = messages.find((m) => m.id === msgId);
+    if (!message?.parsedData) return;
+
+    const updatedTags = [...message.parsedData.tags, newTag];
+
+    try {
+      const response = await fetch(`/api/messages/${msgId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          'parsedData.tags': updatedTags,
+        }),
+      });
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
+
+      if (response.ok) {
+        setMessages(
+          messages.map((msg) =>
+            msg.id === msgId && msg.parsedData
+              ? { ...msg, parsedData: { ...msg.parsedData, tags: updatedTags } }
+              : msg
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error adding tag:', error);
+    }
+  };
+
+  // Handle edit save
+  const handleEditSave = async (updates: any) => {
+    if (!editingMessage || !token) return;
+
+    try {
+      const response = await fetch(`/api/messages/${editingMessage.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
+
+      if (response.ok) {
+        // Refresh messages to get updated data
+        await fetchMessages();
+        setEditingMessage(null);
+      }
+    } catch (error) {
+      console.error('Error updating message:', error);
+    }
+  };
+
+  // Add tag input handler
+  const [tagInput, setTagInput] = useState<{ [key: string]: string }>({});
+
+  const handleAddTag = (msgId: string) => {
+    const tag = tagInput[msgId]?.trim();
+    if (tag) {
+      addTag(msgId, tag);
+      setTagInput({ ...tagInput, [msgId]: '' });
     }
   };
 
@@ -826,9 +947,25 @@ function ExpenseTrackerContent() {
                                 </button>
                               </div>
                             ))}
-                            <button className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 hover:bg-slate-200 text-xs">
-                              +
-                            </button>
+                            <div className="relative group">
+                              <input
+                                type="text"
+                                value={tagInput[message.id] || ''}
+                                onChange={(e) =>
+                                  setTagInput({
+                                    ...tagInput,
+                                    [message.id]: e.target.value,
+                                  })
+                                }
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleAddTag(message.id);
+                                  }
+                                }}
+                                placeholder="Add tag"
+                                className="w-20 px-2 py-1 text-xs border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-400 focus:w-32 transition-all"
+                              />
+                            </div>
                           </div>
                         </div>
                       )}
@@ -851,10 +988,27 @@ function ExpenseTrackerContent() {
                       )}
 
                       <div className="flex items-center justify-between pt-3 border-t border-slate-200">
-                        <button className="p-1.5 hover:bg-slate-100 rounded-lg transition">
-                          <Star className="w-4 h-4 text-slate-400" />
+                        <button
+                          onClick={() =>
+                            toggleFavorite(
+                              message.id,
+                              message.isFavorite || false
+                            )
+                          }
+                          className="p-1.5 hover:bg-slate-100 rounded-lg transition"
+                        >
+                          <Star
+                            className={`w-4 h-4 ${
+                              message.isFavorite
+                                ? 'fill-yellow-400 text-yellow-400'
+                                : 'text-slate-400'
+                            }`}
+                          />
                         </button>
-                        <button className="p-1.5 hover:bg-slate-100 rounded-lg transition">
+                        <button
+                          onClick={() => setEditingMessage(message)}
+                          className="p-1.5 hover:bg-slate-100 rounded-lg transition"
+                        >
                           <Edit2 className="w-4 h-4 text-slate-400" />
                         </button>
                         <button
@@ -915,6 +1069,15 @@ function ExpenseTrackerContent() {
           </button>
         </div>
       </div>
+      {editingMessage && editingMessage.parsedData && (
+        <EditTransactionModal
+          isOpen={true}
+          onClose={() => setEditingMessage(null)}
+          parsedData={editingMessage.parsedData}
+          createdAt={editingMessage.createdAt}
+          onSave={handleEditSave}
+        />
+      )}
     </div>
   );
 }
