@@ -22,6 +22,7 @@ import {
   ChartCandlestick,
   PiggyBank,
   X,
+  LogOut,
 } from 'lucide-react';
 import { DateFilterModal } from '@/components/date-filter-modal';
 
@@ -305,6 +306,21 @@ function DashboardContent() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      logout();
+    }
+  };
+
   return (
     <div
       className="min-h-screen pb-24"
@@ -341,9 +357,15 @@ function DashboardContent() {
           </div>
         </div>
       </div>
-
       {/* Profile Section */}
       <div className="px-6 mt-8 flex items-center justify-end gap-4">
+      <button
+              onClick={handleLogout}
+              className="w-10 h-10 bg-red-500/50 rounded-full flex items-center justify-center hover:bg-red-500 transition"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5 text-white" />
+            </button>
         <div
           className="px-6 py-2 rounded-full rounded-bl-sm rounded-tl-2xl"
           style={{

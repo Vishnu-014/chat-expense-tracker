@@ -13,6 +13,10 @@ import {
   Sparkles,
 } from 'lucide-react';
 import Image from 'next/image';
+import {
+  startAuthentication,
+  startRegistration,
+} from '@simplewebauthn/browser';
 
 const COLORS = {
   EXPENSE: '#E55F78',
@@ -30,12 +34,15 @@ export default function AuthPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [passkeyError, setPasskeyError] = useState('');
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
 
   const { login } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async () => {
     setError('');
+    setPasskeyError('');
     setIsLoading(true);
 
     try {
@@ -51,7 +58,7 @@ export default function AuthPage() {
       if (response.ok) {
         // Use auth context login
         login(data.token, data.user);
-        router.push('/chat');
+        router.push('/');
       } else {
         setError(data.error || 'Authentication failed');
       }
@@ -59,6 +66,94 @@ export default function AuthPage() {
       setError('Network error. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePasskey = async () => {
+    if (!formData.email) {
+      setPasskeyError('Email is required to use a passkey');
+      return;
+    }
+
+    setPasskeyError('');
+    setError('');
+    setPasskeyLoading(true);
+
+    try {
+      if (isLogin) {
+        const startRes = await fetch('/api/auth/passkey/login/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: formData.email }),
+        });
+        const startData = await startRes.json();
+        if (!startRes.ok) {
+          throw new Error(startData.error || 'Failed to start passkey login');
+        }
+
+        const assertion = await startAuthentication(startData.options);
+
+        const finishRes = await fetch('/api/auth/passkey/login/finish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            authenticationResponse: assertion,
+          }),
+        });
+
+        const finishData = await finishRes.json();
+        if (!finishRes.ok) {
+          throw new Error(finishData.error || 'Passkey login failed');
+        }
+
+        login(finishData.token, finishData.user);
+        router.push('/');
+      } else {
+        const startRes = await fetch('/api/auth/passkey/register/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            name: formData.name || formData.email,
+          }),
+        });
+        const startData = await startRes.json();
+        if (!startRes.ok) {
+          throw new Error(
+            startData.error || 'Failed to start passkey registration'
+          );
+        }
+
+        const attestation = await startRegistration(startData.options);
+
+        const finishRes = await fetch('/api/auth/passkey/register/finish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            attestationResponse: attestation,
+          }),
+        });
+
+        const finishData = await finishRes.json();
+        if (!finishRes.ok) {
+          throw new Error(
+            finishData.error || 'Failed to complete passkey registration'
+          );
+        }
+
+        login(finishData.token, finishData.user);
+        router.push('/');
+      }
+    } catch (err: any) {
+      const message =
+        err?.message === 'InvalidStateError'
+          ? 'A passkey already exists for this device. Try signing in instead.'
+          : err?.message || 'Passkey flow failed';
+      setPasskeyError(message);
+    } finally {
+      setPasskeyLoading(false);
     }
   };
 
@@ -223,6 +318,29 @@ export default function AuthPage() {
                   </>
                 )}
               </button>
+
+              <button
+                onClick={handlePasskey}
+                disabled={passkeyLoading}
+                className="w-full py-3 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border border-white/20 bg-white/5"
+              >
+                {passkeyLoading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    {isLogin
+                      ? 'Sign in with passkey'
+                      : 'Create account with passkey'}
+                    <Sparkles className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+
+              {passkeyError && (
+                <div className="p-3 rounded-lg bg-orange-500/20 border border-orange-500/50 text-orange-100 text-sm">
+                  {passkeyError}
+                </div>
+              )}
             </div>
 
             <div className="mt-6 text-center">

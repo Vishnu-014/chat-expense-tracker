@@ -51,6 +51,7 @@ export async function POST(request: Request) {
       name,
       email: email.toLowerCase(),
       password: hashedPassword,
+      passkeys: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
     });
 
     // Return user data (without password)
-    const { password: _, ...userWithoutPassword } = newUser;
+    const { password: _, passkeys: __, ...userWithoutPassword } = newUser;
 
     return NextResponse.json(
       {
