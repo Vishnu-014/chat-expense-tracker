@@ -45,13 +45,20 @@ Important: Return ONLY valid JSON, no markdown formatting, no explanatory text.`
 async function getHandler(request: NextRequest) {
   try {
     const user = (request as any).user;
+    const { searchParams } = new URL(request.url);
+    const limit = searchParams.get('limit');
+    const all = searchParams.get('all') === 'true';
 
     const collection = await getCollection(COLLECTIONS.MESSAGES);
-    const messages = await collection
-      .find({ userId: user.userId })
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .toArray();
+    let query = collection.find({ userId: user.userId }).sort({ createdAt: -1 });
+    
+    if (!all && !limit) {
+      query = query.limit(100);
+    } else if (limit) {
+      query = query.limit(parseInt(limit, 10));
+    }
+    
+    const messages = await query.toArray();
 
     // Calculate totals
     const totals = {
