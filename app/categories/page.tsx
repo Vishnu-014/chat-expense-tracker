@@ -51,6 +51,7 @@ interface Analytics {
   investments: number;
   savings: number;
   categories: Record<TransactionType, CategoryAnalytics[]>;
+  tags: Record<TransactionType, CategoryAnalytics[]>;
 }
 
 /* -------------------- COMPONENT -------------------- */
@@ -60,12 +61,22 @@ function CategoriesContent() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('Exp');
-  const [activeTab, setActiveTab] = useState<'Categories' | 'Tags'>('Categories');
+  const [activeTab, setActiveTab] = useState<'Categories' | 'Tags'>(
+    'Categories'
+  );
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);
   const [startDate, setStartDate] = useState<string | null>('2025-12-01');
   const [endDate, setEndDate] = useState<string | null>('2025-12-31');
   const [dateLabel, setDateLabel] = useState("Dec'25");
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [showAllTags, setShowAllTags] = useState(false);
   const dateButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Reset showAllCategories and showAllTags when filter or tab changes
+  useEffect(() => {
+    setShowAllCategories(false);
+    setShowAllTags(false);
+  }, [selectedFilter, activeTab]);
 
   /* -------------------- FETCH -------------------- */
   useEffect(() => {
@@ -79,7 +90,7 @@ function CategoriesContent() {
 
     try {
       setIsLoading(true);
-      
+
       // Build query params
       let queryParams = '';
       if (startDate && endDate) {
@@ -115,23 +126,55 @@ function CategoriesContent() {
   const handleDateApply = (start: string | null, end: string | null) => {
     setStartDate(start);
     setEndDate(end);
-    
+
     // Update label
     if (start && end) {
       const startDateObj = new Date(start);
       const endDateObj = new Date(end);
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      
-      if (startDateObj.getFullYear() === endDateObj.getFullYear() && 
-          startDateObj.getMonth() === endDateObj.getMonth()) {
+      const monthNames = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+
+      if (
+        startDateObj.getFullYear() === endDateObj.getFullYear() &&
+        startDateObj.getMonth() === endDateObj.getMonth()
+      ) {
         // Same month
-        setDateLabel(`${monthNames[startDateObj.getMonth()]}'${startDateObj.getFullYear().toString().slice(2)}`);
+        setDateLabel(
+          `${monthNames[startDateObj.getMonth()]}'${startDateObj
+            .getFullYear()
+            .toString()
+            .slice(2)}`
+        );
       } else if (startDateObj.getFullYear() === endDateObj.getFullYear()) {
         // Same year, different months
-        setDateLabel(`${monthNames[startDateObj.getMonth()]}-${monthNames[endDateObj.getMonth()]}'${startDateObj.getFullYear().toString().slice(2)}`);
+        setDateLabel(
+          `${monthNames[startDateObj.getMonth()]}-${
+            monthNames[endDateObj.getMonth()]
+          }'${startDateObj.getFullYear().toString().slice(2)}`
+        );
       } else {
         // Different years
-        setDateLabel(`${monthNames[startDateObj.getMonth()]}'${startDateObj.getFullYear().toString().slice(2)}-${monthNames[endDateObj.getMonth()]}'${endDateObj.getFullYear().toString().slice(2)}`);
+        setDateLabel(
+          `${monthNames[startDateObj.getMonth()]}'${startDateObj
+            .getFullYear()
+            .toString()
+            .slice(2)}-${monthNames[endDateObj.getMonth()]}'${endDateObj
+            .getFullYear()
+            .toString()
+            .slice(2)}`
+        );
       }
     }
   };
@@ -151,9 +194,17 @@ function CategoriesContent() {
   /* -------------------- DERIVED STATE -------------------- */
   const selectedType = FILTER_TO_TYPE[selectedFilter];
   const selectedCategories = analytics.categories[selectedType] ?? [];
-  const topCategories = selectedCategories.slice(0, 5);
-  const remainingCount =
+  const selectedTags = analytics.tags[selectedType] ?? [];
+
+  const displayedCategories = showAllCategories
+    ? selectedCategories
+    : selectedCategories.slice(0, 5);
+  const displayedTags = showAllTags ? selectedTags : selectedTags.slice(0, 5);
+
+  const remainingCategoriesCount =
     selectedCategories.length > 5 ? selectedCategories.length - 5 : 0;
+  const remainingTagsCount =
+    selectedTags.length > 5 ? selectedTags.length - 5 : 0;
 
   const summaryAmount =
     selectedType === 'EXPENSE'
@@ -224,10 +275,10 @@ function CategoriesContent() {
         ))}
       </div>
 
-      {/* Categories */}
+      {/* Categories or Tags */}
       <div className="px-6 py-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Categories</h2>
+          <h2 className="text-xl font-bold">{activeTab}</h2>
           <button className="flex items-center gap-2 px-4 py-2 bg-white rounded-full border text-sm font-medium">
             Sort <ArrowUpDown className="w-4 h-4" />
           </button>
@@ -241,22 +292,67 @@ function CategoriesContent() {
           <span>₹{summaryAmount.toLocaleString()}</span>
         </div>
 
-        {/* Category Cards */}
+        {/* Category or Tag Cards */}
         <div className="space-y-4">
-          {topCategories.map((cat) => (
-            <CategoryRow
-              key={cat.name}
-              name={cat.name}
-              amount={cat.amount}
-              percentage={cat.percentage}
-              type={selectedType}
-            />
-          ))}
-          {remainingCount > 0 && (
-            <button className="w-full py-3 text-center text-slate-600 font-medium">
-              +{remainingCount} more{' '}
-              <span className="ml-2 underline">View more</span>
-            </button>
+          {activeTab === 'Categories' ? (
+            <>
+              {displayedCategories.map((cat) => (
+                <CategoryRow
+                  key={cat.name}
+                  name={cat.name}
+                  amount={cat.amount}
+                  percentage={cat.percentage}
+                  type={selectedType}
+                />
+              ))}
+              {remainingCategoriesCount > 0 && (
+                <button
+                  onClick={() => setShowAllCategories(!showAllCategories)}
+                  className="w-full py-3 text-center text-slate-600 font-medium hover:text-slate-800 transition-colors"
+                >
+                  {showAllCategories ? (
+                    'View less'
+                  ) : (
+                    <>
+                      +{remainingCategoriesCount} more{' '}
+                      <span className="ml-2 underline">View more</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              {displayedTags.map((tag) => (
+                <CategoryRow
+                  key={tag.name}
+                  name={tag.name}
+                  amount={tag.amount}
+                  percentage={tag.percentage}
+                  type={selectedType}
+                />
+              ))}
+              {remainingTagsCount > 0 && (
+                <button
+                  onClick={() => setShowAllTags(!showAllTags)}
+                  className="w-full py-3 text-center text-slate-600 font-medium hover:text-slate-800 transition-colors"
+                >
+                  {showAllTags ? (
+                    'View less'
+                  ) : (
+                    <>
+                      +{remainingTagsCount} more{' '}
+                      <span className="ml-2 underline">View more</span>
+                    </>
+                  )}
+                </button>
+              )}
+              {displayedTags.length === 0 && (
+                <div className="text-center py-8 text-slate-500">
+                  No tags found for this period
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

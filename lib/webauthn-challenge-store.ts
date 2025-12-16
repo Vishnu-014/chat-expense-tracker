@@ -25,3 +25,4 @@ export function consumeAuthenticationChallenge(
   return challenge;
 }
 
+

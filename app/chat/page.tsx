@@ -49,6 +49,7 @@ import {
   ChartCandlestick,
 } from 'lucide-react';
 import EditTransactionModal from '@/components/edit-transaction-modal';
+import { BudgetEditModal } from '@/components/budget-edit-modal';
 
 type ChatMessage = {
   _id?: string;
@@ -222,8 +223,13 @@ function ExpenseTrackerContent() {
   const [selectedFilter, setSelectedFilter] =
     useState<TransactionFilter>('EXPENSE');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [expenseBudget, setExpenseBudget] = useState(40000);
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const bottomBarRef = useRef<HTMLDivElement>(null);
+
   const router = useRouter();
 
   const { user, token, logout } = useAuth();
@@ -231,8 +237,81 @@ function ExpenseTrackerContent() {
   useEffect(() => {
     if (user && token) {
       fetchMessages();
+      fetchBudget();
     }
   }, [user, token]);
+
+  // Handle keyboard appearance on iOS
+  useEffect(() => {
+    const handleResize = () => {
+      // Scroll to bottom when keyboard appears
+      if (document.activeElement === inputRef.current) {
+        setTimeout(() => {
+          bottomBarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 100);
+      }
+    };
+
+    // Listen for visual viewport changes (iOS keyboard)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+      return () => {
+        window.visualViewport?.removeEventListener('resize', handleResize);
+      };
+    }
+  }, []);
+
+  const fetchBudget = async () => {
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/budget', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        setExpenseBudget(data.budget.expense || 40000);
+      }
+    } catch (error) {
+      console.error('Error fetching budget:', error);
+    }
+  };
+
+  const handleBudgetSave = async (newBudget: number) => {
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/budget', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ expense: newBudget }),
+      });
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        setExpenseBudget(data.budget.expense);
+      }
+    } catch (error) {
+      console.error('Error saving budget:', error);
+      throw error;
+    }
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -267,7 +346,6 @@ function ExpenseTrackerContent() {
     }
   };
 
-  const totalBudget = 40000;
   const totalExpense = messages.reduce((sum, msg) => {
     if (msg.parsedData?.transaction_type === 'EXPENSE')
       return sum + msg.parsedData.amount;
@@ -298,10 +376,10 @@ function ExpenseTrackerContent() {
     }
   };
 
-  const expensePercent = (totalExpense / totalBudget) * 100;
-  const incomePercent = (totalIncome / totalBudget) * 100;
-  const investmentPercent = (totalInvestment / totalBudget) * 100;
-  const savingsPercent = (totalSavings / totalBudget) * 100;
+  const expensePercent = expenseBudget > 0 ? (totalExpense / expenseBudget) * 100 : 0;
+  const incomePercent = expenseBudget > 0 ? (totalIncome / expenseBudget) * 100 : 0;
+  const investmentPercent = expenseBudget > 0 ? (totalInvestment / expenseBudget) * 100 : 0;
+  const savingsPercent = expenseBudget > 0 ? (totalSavings / expenseBudget) * 100 : 0;
 
   const filterOptions = [
     {
@@ -612,10 +690,7 @@ function ExpenseTrackerContent() {
   }
 
   return (
-    <div
-      className="h-screen flex flex-col"
-      style={{ backgroundColor: COLORS.BACKGROUND }}
-    >
+    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: COLORS.BACKGROUND }}>
       {/* Header */}
       <div
         className="pt-6 pb-4 px-6 flex-shrink-0"
@@ -726,16 +801,48 @@ function ExpenseTrackerContent() {
               <div>
                 <div className="text-slate-400 text-sm mb-1">Budget</div>
                 <div className="text-white text-2xl font-bold">
-                  ₹{totalBudget.toLocaleString()}
+                  ₹{expenseBudget.toLocaleString()}
                 </div>
               </div>
               <div>
                 <div className="text-slate-400 text-sm mb-1">Actual</div>
                 <div className="text-white text-2xl font-bold">
-                  ₹{getCurrentTotal().toLocaleString()}
+                   ₹{getCurrentTotal().toLocaleString()}
                 </div>
               </div>
+              <button
+                onClick={() => setIsBudgetModalOpen(true)}
+                className="p-2 hover:bg-slate-700 rounded-full transition"
+                title="Edit Budget"
+              >
+                <Edit2 className="w-4 h-4 text-white" />
+              </button>
             </div>
+            {selectedFilter === 'EXPENSE' && expenseBudget > 0 && (
+              <div className="mt-3 pt-3 border-t border-slate-700">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 text-xs">•</span>
+                  <span
+                    className={`text-xs font-medium ${
+                      totalExpense > expenseBudget
+                        ? 'text-red-400'
+                        : totalExpense < expenseBudget
+                        ? 'text-green-400'
+                        : 'text-slate-400'
+                    }`}
+                  >
+                    {Math.abs(
+                      ((totalExpense - expenseBudget) / expenseBudget) * 100
+                    ).toFixed(1)}%
+                    {totalExpense > expenseBudget
+                      ? ' over-budget'
+                      : totalExpense < expenseBudget
+                      ? ' under-budget'
+                      : ' on-budget'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Multi-Ring Circular Progress */}
@@ -1039,17 +1146,25 @@ function ExpenseTrackerContent() {
 
       {/* Bottom Input Bar */}
       <div
-        className="px-6 py-4 border-t flex-shrink-0"
+        ref={bottomBarRef}
+        className="px-6 py-4 pb-2 border-t flex-shrink-0"
         style={{ backgroundColor: COLORS.BACKGROUND, borderColor: '#1e3a47' }}
       >
         <div className="flex items-center gap-3">
           <div className="flex-1 bg-slate-700/50 rounded-full px-4 py-3 flex items-center gap-2">
             <span className="text-slate-500 text-lg">#</span>
             <input
+              ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
+              onFocus={() => {
+                // Scroll into view when focused on iOS
+                setTimeout(() => {
+                  bottomBarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 300);
+              }}
               placeholder="Lunch at restaurant 500"
               disabled={isLoading}
               className="bg-transparent text-white placeholder-slate-500 outline-none flex-1 disabled:opacity-50"
@@ -1078,6 +1193,12 @@ function ExpenseTrackerContent() {
           onSave={handleEditSave}
         />
       )}
+      <BudgetEditModal
+        isOpen={isBudgetModalOpen}
+        onClose={() => setIsBudgetModalOpen(false)}
+        currentBudget={expenseBudget}
+        onSave={handleBudgetSave}
+      />
     </div>
   );
 }

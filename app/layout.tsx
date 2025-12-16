@@ -18,6 +18,15 @@ export const metadata: Metadata = {
   description: 'Chat based expense tracker',
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  interactiveWidget: 'resizes-content', // Critical for iOS keyboard
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{

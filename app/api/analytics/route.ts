@@ -26,6 +26,7 @@ interface AnalyticsResponse {
   investments: number;
   savings: number;
   categories: Record<TransactionType, CategoryAnalytics[]>;
+  tags: Record<TransactionType, CategoryAnalytics[]>;
   period: string;
 }
 
@@ -125,6 +126,48 @@ async function getHandler(request: NextRequest) {
       }));
     }
 
+    /* -------------------- TAGS -------------------- */
+
+    const allTags: Record<TransactionType, CategoryAnalytics[]> = {
+      EXPENSE: [],
+      INCOME: [],
+      INVESTMENTS: [],
+      SAVINGS: [],
+    };
+
+    for (const transactionType of TRANSACTION_TYPES) {
+      const tags = await collection
+        .aggregate<{
+          _id: string;
+          total: number;
+          count: number;
+        }>([
+          {
+            $match: {
+              ...query,
+              'parsedData.transaction_type': transactionType,
+              'parsedData.tags': { $exists: true, $ne: [] },
+            },
+          },
+          { $unwind: '$parsedData.tags' },
+          {
+            $group: {
+              _id: '$parsedData.tags',
+              total: { $sum: '$parsedData.amount' },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { total: -1 } },
+        ])
+        .toArray();
+
+      allTags[transactionType] = tags.map((t) => ({
+        name: t._id,
+        amount: t.total,
+        count: t.count,
+      }));
+    }
+
     /* -------------------- ANALYTICS -------------------- */
 
     const getTotal = (type: TransactionType) =>
@@ -136,6 +179,7 @@ async function getHandler(request: NextRequest) {
       investments: getTotal('INVESTMENTS'),
       savings: getTotal('SAVINGS'),
       categories: allCategories,
+      tags: allTags,
       period: month || year || 'custom',
     };
 
@@ -150,6 +194,14 @@ async function getHandler(request: NextRequest) {
         ...cat,
         percentage:
           typeTotal > 0 ? Math.round((cat.amount / typeTotal) * 100) : 0,
+      }));
+
+      analytics.tags[transactionType] = analytics.tags[
+        transactionType
+      ].map((tag) => ({
+        ...tag,
+        percentage:
+          typeTotal > 0 ? Math.round((tag.amount / typeTotal) * 100) : 0,
       }));
     }
 

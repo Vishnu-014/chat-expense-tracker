@@ -725,8 +725,10 @@ import {
   BarChart3,
   PieChart,
   Activity,
+  Edit2,
 } from 'lucide-react';
 import { DateFilterModal } from '@/components/date-filter-modal';
+import { BudgetEditModal } from '@/components/budget-edit-modal';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -741,6 +743,7 @@ import {
   Filler,
 } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import { getCategoryIcon } from '@/lib/category-icons';
 
 // Register ChartJS components
 ChartJS.register(
@@ -772,28 +775,28 @@ const COLORS = {
   BAR_FADED_SAVINGS: 'rgba(213, 185, 94, 0.4)',
 };
 
-const getCategoryIcon = (category: string) => {
-  const categoryLower = category.toLowerCase();
-  if (categoryLower.includes('rent') || categoryLower.includes('housing'))
-    return HomeIcon;
-  if (categoryLower.includes('transport') || categoryLower.includes('travel'))
-    return Car;
-  if (
-    categoryLower.includes('food') ||
-    categoryLower.includes('restaurant') ||
-    categoryLower.includes('eating')
-  )
-    return Utensils;
-  if (
-    categoryLower.includes('bill') ||
-    categoryLower.includes('utility') ||
-    categoryLower.includes('utilities')
-  )
-    return Receipt;
-  if (categoryLower.includes('shopping') || categoryLower.includes('groceries'))
-    return ShoppingBag;
-  return ShoppingBag;
-};
+// const getCategoryIcon = (category: string) => {
+//   const categoryLower = category.toLowerCase();
+//   if (categoryLower.includes('rent') || categoryLower.includes('housing'))
+//     return HomeIcon;
+//   if (categoryLower.includes('transport') || categoryLower.includes('travel'))
+//     return Car;
+//   if (
+//     categoryLower.includes('food') ||
+//     categoryLower.includes('restaurant') ||
+//     categoryLower.includes('eating')
+//   )
+//     return Utensils;
+//   if (
+//     categoryLower.includes('bill') ||
+//     categoryLower.includes('utility') ||
+//     categoryLower.includes('utilities')
+//   )
+//     return Receipt;
+//   if (categoryLower.includes('shopping') || categoryLower.includes('groceries'))
+//     return ShoppingBag;
+//   return ShoppingBag;
+// };
 
 interface Category {
   name: string;
@@ -833,12 +836,67 @@ function DashboardContent() {
   const [endDate, setEndDate] = useState<string | null>('2025-12-31');
   const [dateLabel, setDateLabel] = useState("Dec'25");
   const dateButtonRef = useRef<HTMLButtonElement>(null);
+  const [expenseBudget, setExpenseBudget] = useState(40000);
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
 
   useEffect(() => {
     if (user && token) {
       fetchAnalytics();
+      fetchBudget();
     }
   }, [user, token, startDate, endDate]);
+
+  const fetchBudget = async () => {
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/budget', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        setExpenseBudget(data.budget.expense || 40000);
+      }
+    } catch (error) {
+      console.error('Error fetching budget:', error);
+    }
+  };
+
+  const handleBudgetSave = async (newBudget: number) => {
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/budget', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ expense: newBudget }),
+      });
+
+      if (response.status === 401) {
+        logout();
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        setExpenseBudget(data.budget.expense);
+      }
+    } catch (error) {
+      console.error('Error saving budget:', error);
+      throw error;
+    }
+  };
 
   const fetchAnalytics = async () => {
     if (!token) return;
@@ -1250,6 +1308,13 @@ function DashboardContent() {
         anchorRef={dateButtonRef}
       />
 
+      <BudgetEditModal
+        isOpen={isBudgetModalOpen}
+        onClose={() => setIsBudgetModalOpen(false)}
+        currentBudget={expenseBudget}
+        onSave={handleBudgetSave}
+      />
+
       {/* Conditional Content Based on Active Tab */}
       {activeTab === 'dashboard' ? (
         /* DASHBOARD TAB CONTENT */
@@ -1280,10 +1345,76 @@ function DashboardContent() {
             )}
           </div>
 
+          {/* Expense Budget Section */}
+          {hasData && analytics && (
+            <div className="px-6 mt-6">
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-white text-sm font-semibold">
+                    Expense Summary
+                  </h3>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <div className="text-slate-400 text-xs mb-1">Budget</div>
+                      <div className="text-white text-lg font-bold">
+                        ₹{expenseBudget.toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400 text-xs mb-1">Actual</div>
+                      <div className="text-white text-lg font-bold">
+                        ₹{analytics.expense.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIsBudgetModalOpen(true)}
+                      className="p-2 hover:bg-white/10 rounded-full transition"
+                      title="Edit Budget"
+                    >
+                      <Edit2 className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
+                </div>
+                {expenseBudget > 0 && (
+                  <div className="mt-3 pt-3 border-t border-white/10">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400 text-xs">•</span>
+                      <span
+                        className={`text-xs font-medium ${
+                          analytics.expense > expenseBudget
+                            ? 'text-red-400'
+                            : analytics.expense < expenseBudget
+                            ? 'text-green-400'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        {Math.abs(
+                          ((analytics.expense - expenseBudget) /
+                            expenseBudget) *
+                            100
+                        ).toFixed(1)}
+                        %
+                        {analytics.expense > expenseBudget
+                          ? ' over-budget'
+                          : analytics.expense < expenseBudget
+                          ? ' under-budget'
+                          : ' on-budget'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Bar Chart Section */}
-          <div className="px-6 mt-6">
+          <div className="px-4 sm:px-6 mt-6">
             <div
-              className="border-2 rounded-2xl p-5"
+              className="border-2 rounded-2xl p-3 sm:p-5"
               style={{
                 borderColor:
                   currentView === 'summary'
@@ -1331,8 +1462,8 @@ function DashboardContent() {
               ) : currentView === 'summary' ? (
                 <>
                   <div
-                    className="flex items-end justify-around gap-2 px-2"
-                    style={{ height: '140px' }}
+                    className="flex items-end justify-around gap-1 sm:gap-2 px-1 sm:px-2"
+                    style={{ height: '120px' }}
                   >
                     {summaryBars.map((bar, index) => {
                       const heightPercent =
@@ -1346,13 +1477,13 @@ function DashboardContent() {
                             bar.amount > 0 && setCurrentView(bar.type)
                           }
                           className="flex flex-col items-center justify-end hover:opacity-80 transition cursor-pointer"
-                          style={{ width: '22%' }}
+                          style={{ width: '23%' }}
                           disabled={bar.amount === 0}
                         >
                           <div
                             className="w-full rounded-lg relative overflow-hidden"
                             style={{
-                              height: '100px',
+                              height: '90px',
                               backgroundColor: bar.fadedColor,
                             }}
                           >
@@ -1367,8 +1498,8 @@ function DashboardContent() {
                               }}
                             >
                               {bar.amount > 0 && (
-                                <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                                  <Icon className="w-4 h-4 text-white" />
+                                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                  <Icon className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                                 </div>
                               )}
                             </div>
@@ -1378,17 +1509,17 @@ function DashboardContent() {
                     })}
                   </div>
 
-                  <div className="flex justify-around gap-2 mt-3 px-2">
+                  <div className="flex justify-around gap-1 sm:gap-2 mt-2 sm:mt-3 px-1 sm:px-2">
                     {summaryBars.map((bar, index) => (
                       <div
                         key={index}
                         className="flex flex-col items-center"
-                        style={{ width: '22%' }}
+                        style={{ width: '23%' }}
                       >
-                        <p className="text-white text-xs text-center mb-1 font-medium">
+                        <p className="text-white text-[10px] sm:text-xs text-center mb-1 font-medium leading-tight">
                           {bar.name}
                         </p>
-                        <p className="text-white text-sm font-bold">
+                        <p className="text-white text-xs sm:text-sm font-bold">
                           ₹
                           {bar.amount >= 1000
                             ? `${(bar.amount / 1000).toFixed(1)}k`
@@ -1401,14 +1532,10 @@ function DashboardContent() {
               ) : categoryBars.length > 0 ? (
                 <>
                   <div
-                    className={`grid gap-2 px-2 items-end ${
-                      categoryBars.length > 5
-                        ? 'grid-cols-5 md:grid-cols-10'
-                        : 'grid-cols-5'
-                    }`}
-                    style={{ height: '140px' }}
+                    className="grid grid-cols-5 gap-1 sm:gap-2 px-1 sm:px-2 items-end"
+                    style={{ height: '120px' }}
                   >
-                    {categoryBars.map((category, index) => {
+                    {categoryBars.slice(0, 5).map((category, index) => {
                       const heightPercent =
                         (category.amount / maxCategoryAmount) * 100;
                       const Icon = getCategoryIcon(category.name);
@@ -1448,19 +1575,13 @@ function DashboardContent() {
                     })}
                   </div>
 
-                  <div
-                    className={`grid gap-2 mt-3 px-2 ${
-                      categoryBars.length > 5
-                        ? 'grid-cols-5 md:grid-cols-10'
-                        : 'grid-cols-5'
-                    }`}
-                  >
-                    {categoryBars.map((category, index) => (
+                  <div className="grid grid-cols-5 gap-1 sm:gap-2 mt-2 sm:mt-3 px-1 sm:px-2">
+                    {categoryBars.slice(0, 5).map((category, index) => (
                       <div key={index} className="flex flex-col items-center">
-                        <p className="text-white text-[10px] text-center mb-1 truncate w-full leading-tight">
+                        <p className="text-white text-[9px] sm:text-[10px] text-center mb-1 truncate w-full leading-tight">
                           {category.name}
                         </p>
-                        <p className="text-white text-xs font-bold">
+                        <p className="text-white text-[10px] sm:text-xs font-bold">
                           ₹
                           {category.amount >= 1000
                             ? `${(category.amount / 1000).toFixed(1)}k`
