@@ -67,7 +67,7 @@ function CategoriesContent() {
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);
   const [startDate, setStartDate] = useState<string | null>('2025-12-01');
   const [endDate, setEndDate] = useState<string | null>('2025-12-31');
-  const [dateLabel, setDateLabel] = useState("Dec'25");
+  const [dateLabel, setDateLabel] = useState("Dec 25");
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const dateButtonRef = useRef<HTMLButtonElement>(null);

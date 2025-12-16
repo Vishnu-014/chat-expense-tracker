@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, Work_Sans } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
+import localFont from 'next/font/local'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -11,6 +12,14 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
+});
+
+
+const workSans = Work_Sans({
+  variable: '--font-work-sans',
+  subsets: ['latin'],
+  weight: '400',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -24,7 +33,7 @@ export const viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
-  interactiveWidget: 'resizes-content', // Critical for iOS keyboard
+  interactiveWidget: 'resizes-content',
 }
 
 export default function RootLayout({
@@ -35,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={workSans.variable}
       >
         <AuthProvider>{children}</AuthProvider>
       </body>

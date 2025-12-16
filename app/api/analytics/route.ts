@@ -67,8 +67,6 @@ async function getHandler(request: NextRequest) {
       };
     }
 
-    console.log('Analytics Query:', JSON.stringify(query, null, 2));
-
     /* -------------------- TOTALS -------------------- */
 
     const totals = await collection
@@ -84,7 +82,6 @@ async function getHandler(request: NextRequest) {
       ])
       .toArray();
 
-    console.log('Totals:', totals);
 
     /* -------------------- CATEGORIES -------------------- */
 

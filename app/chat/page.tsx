@@ -1,55 +1,29 @@
 'use client';
 
-import { useState, KeyboardEvent, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
+import { BudgetEditModal } from '@/components/budget-edit-modal';
+import EditTransactionModal from '@/components/edit-transaction-modal';
 import ProtectedRoute from '@/components/protected-route';
+import { useAuth } from '@/lib/auth-context';
+import { getCategoryIcon } from '@/lib/category-icons';
 import {
-  Heart,
-  Home,
-  ChevronLeft,
-  Edit2,
-  Trash2,
-  Star,
-  Send,
-  Loader2,
-  LogOut,
-  Utensils,
-  Car,
-  Bus,
-  Bike,
-  ShoppingBag,
-  Wallet,
-  TrendingUp,
-  Receipt,
-  HeartPulse,
-  Plane,
-  Coffee,
-  Shirt,
-  Home as HomeIcon,
-  Tv,
-  GraduationCap,
-  Gift,
-  HandHeart,
-  Smartphone,
-  Dumbbell,
-  Film,
-  Music,
-  PiggyBank,
-  Briefcase,
-  Lightbulb,
-  Droplet,
-  Zap,
-  Wifi,
-  Phone,
-  TrendingDown,
-  DollarSign,
+  ChartCandlestick,
   Check,
   ChevronDown,
-  ChartCandlestick,
+  ChevronLeft,
+  DollarSign,
+  Edit2,
+  Heart,
+  Home,
+  Loader2,
+  PiggyBank,
+  Send,
+  Star,
+  Trash2,
+  TrendingDown,
+  TrendingUp
 } from 'lucide-react';
-import EditTransactionModal from '@/components/edit-transaction-modal';
-import { BudgetEditModal } from '@/components/budget-edit-modal';
+import { useRouter } from 'next/navigation';
+import { KeyboardEvent, useEffect, useRef, useState } from 'react';
 
 type ChatMessage = {
   _id?: string;
@@ -87,119 +61,6 @@ const COLORS = {
 
 type TransactionFilter = 'EXPENSE' | 'INCOME' | 'INVESTMENTS' | 'SAVINGS';
 
-const getCategoryIcon = (category: string) => {
-  const categoryLower = category.toLowerCase();
-
-  if (
-    categoryLower.includes('food') ||
-    categoryLower.includes('restaurant') ||
-    categoryLower.includes('eating')
-  )
-    return Utensils;
-  if (
-    categoryLower.includes('transport') ||
-    categoryLower.includes('taxi') ||
-    categoryLower.includes('uber')
-  )
-    return Car;
-  if (categoryLower.includes('bus')) return Bus;
-  if (
-    categoryLower.includes('bike') ||
-    categoryLower.includes('cycle') ||
-    categoryLower.includes('leisure')
-  )
-    return Bike;
-  if (categoryLower.includes('shopping') || categoryLower.includes('retail'))
-    return ShoppingBag;
-  if (
-    categoryLower.includes('salary') ||
-    categoryLower.includes('income') ||
-    categoryLower.includes('wage')
-  )
-    return Wallet;
-  if (
-    categoryLower.includes('investment') ||
-    categoryLower.includes('stock') ||
-    categoryLower.includes('mutual')
-  )
-    return ChartCandlestick;
-  if (categoryLower.includes('bill') || categoryLower.includes('utility'))
-    return Receipt;
-  if (
-    categoryLower.includes('health') ||
-    categoryLower.includes('medical') ||
-    categoryLower.includes('medicine')
-  )
-    return HeartPulse;
-  if (
-    categoryLower.includes('travel') ||
-    categoryLower.includes('flight') ||
-    categoryLower.includes('vacation')
-  )
-    return Plane;
-  if (categoryLower.includes('coffee') || categoryLower.includes('cafe'))
-    return Coffee;
-  if (
-    categoryLower.includes('clothing') ||
-    categoryLower.includes('fashion') ||
-    categoryLower.includes('apparel')
-  )
-    return Shirt;
-  if (
-    categoryLower.includes('rent') ||
-    categoryLower.includes('housing') ||
-    categoryLower.includes('mortgage')
-  )
-    return HomeIcon;
-  if (
-    categoryLower.includes('entertainment') ||
-    categoryLower.includes('streaming') ||
-    categoryLower.includes('subscription')
-  )
-    return Tv;
-  if (
-    categoryLower.includes('education') ||
-    categoryLower.includes('course') ||
-    categoryLower.includes('tuition')
-  )
-    return GraduationCap;
-  if (categoryLower.includes('gift') || categoryLower.includes('donation'))
-    return Gift;
-  if (categoryLower.includes('charity') || categoryLower.includes('goodwill'))
-    return HandHeart;
-  if (
-    categoryLower.includes('electronics') ||
-    categoryLower.includes('gadget') ||
-    categoryLower.includes('phone')
-  )
-    return Smartphone;
-  if (
-    categoryLower.includes('fitness') ||
-    categoryLower.includes('gym') ||
-    categoryLower.includes('sport')
-  )
-    return Dumbbell;
-  if (categoryLower.includes('movie') || categoryLower.includes('cinema'))
-    return Film;
-  if (categoryLower.includes('music') || categoryLower.includes('concert'))
-    return Music;
-  if (categoryLower.includes('savings') || categoryLower.includes('deposit'))
-    return PiggyBank;
-  if (categoryLower.includes('freelance') || categoryLower.includes('business'))
-    return Briefcase;
-  if (categoryLower.includes('electricity') || categoryLower.includes('power'))
-    return Zap;
-  if (categoryLower.includes('water')) return Droplet;
-  if (categoryLower.includes('internet') || categoryLower.includes('broadband'))
-    return Wifi;
-  if (categoryLower.includes('mobile') || categoryLower.includes('recharge'))
-    return Phone;
-  if (categoryLower.includes('refund') || categoryLower.includes('cashback'))
-    return TrendingDown;
-
-  return DollarSign; // Default icon
-};
-
 const getTypeIcon = (type: string) => {
   switch (type) {
     case 'EXPENSE':
@@ -229,6 +90,9 @@ function ExpenseTrackerContent() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomBarRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const isInitialLoadRef = useRef(true);
+  const previousMessagesLengthRef = useRef(0);
 
   const router = useRouter();
 
@@ -313,8 +177,27 @@ function ExpenseTrackerContent() {
     }
   };
 
+  // Scroll to bottom when messages change
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length === 0) return;
+
+    // On initial load or when messages are first loaded, scroll instantly
+    if (isInitialLoadRef.current) {
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        isInitialLoadRef.current = false;
+      });
+    } else {
+      // When new messages are added (length increased), scroll smoothly
+      if (messages.length > previousMessagesLengthRef.current) {
+        requestAnimationFrame(() => {
+          chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        });
+      }
+    }
+    
+    previousMessagesLengthRef.current = messages.length;
   }, [messages]);
 
   const fetchMessages = async () => {
@@ -337,7 +220,14 @@ function ExpenseTrackerContent() {
 
       if (response.ok) {
         const data = await response.json();
-        setMessages(data.messages || []);
+        const fetchedMessages = data.messages || [];
+        setMessages(fetchedMessages);
+        // Reset initial load flag when messages are fetched
+        isInitialLoadRef.current = true;
+        // Scroll to bottom immediately after initial load
+        setTimeout(() => {
+          chatEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        }, 50);
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -704,19 +594,11 @@ function ExpenseTrackerContent() {
             <ChevronLeft className="w-6 h-6 text-white" />
           </button>
           <div className="flex items-center gap-3">
-            <span className="text-white text-sm">{user?.name}</span>
             <button
               onClick={() => router.push('/')}
               className="w-10 h-10 bg-slate-700/50 rounded-full flex items-center justify-center hover:bg-slate-700 transition"
             >
               <Home className="w-6 h-6 text-white" />
-            </button>
-            <button
-              onClick={handleLogout}
-              className="w-10 h-10 bg-red-500/50 rounded-full flex items-center justify-center hover:bg-red-500 transition"
-              title="Logout"
-            >
-              <LogOut className="w-5 h-5 text-white" />
             </button>
           </div>
         </div>
@@ -846,27 +728,27 @@ function ExpenseTrackerContent() {
           </div>
 
           {/* Multi-Ring Circular Progress */}
-          <div className="relative w-20 h-20 shrink-0">
-            <svg className="transform -rotate-90 w-20 h-20">
+          <div className="relative w-28 h-28 shrink-0">
+            <svg className="transform -rotate-90 w-28 h-28">
               {/* Expense Ring */}
               <circle
-                cx="40"
-                cy="40"
-                r="36"
+                cx="56"
+                cy="56"
+                r="50"
                 stroke="#334155"
-                strokeWidth="4"
+                strokeWidth="8"
                 fill="none"
                 opacity={selectedFilter === 'EXPENSE' ? 1 : 0.3}
               />
               <circle
-                cx="40"
-                cy="40"
-                r="36"
+                cx="56"
+                cy="56"
+                r="50"
                 stroke={COLORS.EXPENSE}
-                strokeWidth="4"
+                strokeWidth="8"
                 fill="none"
-                strokeDasharray={`${expensePercent * 2.26} ${
-                  226 - expensePercent * 2.26
+                strokeDasharray={`${expensePercent * 3.14} ${
+                  314 - expensePercent * 3.14
                 }`}
                 strokeLinecap="round"
                 opacity={selectedFilter === 'EXPENSE' ? 1 : 0.3}
@@ -874,23 +756,23 @@ function ExpenseTrackerContent() {
 
               {/* Income Ring */}
               <circle
-                cx="40"
-                cy="40"
-                r="28"
+                cx="56"
+                cy="56"
+                r="38"
                 stroke="#334155"
-                strokeWidth="4"
+                strokeWidth="8"
                 fill="none"
                 opacity={selectedFilter === 'INCOME' ? 1 : 0.3}
               />
               <circle
-                cx="40"
-                cy="40"
-                r="28"
+                cx="56"
+                cy="56"
+                r="38"
                 stroke={COLORS.INCOME}
-                strokeWidth="4"
+                strokeWidth="8"
                 fill="none"
-                strokeDasharray={`${incomePercent * 1.76} ${
-                  176 - incomePercent * 1.76
+                strokeDasharray={`${incomePercent * 2.39} ${
+                  239 - incomePercent * 2.39
                 }`}
                 strokeLinecap="round"
                 opacity={selectedFilter === 'INCOME' ? 1 : 0.3}
@@ -898,23 +780,23 @@ function ExpenseTrackerContent() {
 
               {/* Investment Ring */}
               <circle
-                cx="40"
-                cy="40"
-                r="20"
+                cx="56"
+                cy="56"
+                r="26"
                 stroke="#334155"
-                strokeWidth="4"
+                strokeWidth="8"
                 fill="none"
                 opacity={selectedFilter === 'INVESTMENTS' ? 1 : 0.3}
               />
               <circle
-                cx="40"
-                cy="40"
-                r="20"
+                cx="56"
+                cy="56"
+                r="26"
                 stroke={COLORS.INVESTMENTS}
-                strokeWidth="4"
+                strokeWidth="8"
                 fill="none"
-                strokeDasharray={`${investmentPercent * 1.26} ${
-                  126 - investmentPercent * 1.26
+                strokeDasharray={`${investmentPercent * 1.63} ${
+                  163 - investmentPercent * 1.63
                 }`}
                 strokeLinecap="round"
                 opacity={selectedFilter === 'INVESTMENTS' ? 1 : 0.3}
@@ -922,23 +804,23 @@ function ExpenseTrackerContent() {
 
               {/* Savings Ring */}
               <circle
-                cx="40"
-                cy="40"
-                r="12"
+                cx="56"
+                cy="56"
+                r="14"
                 stroke="#334155"
-                strokeWidth="4"
+                strokeWidth="8"
                 fill="none"
                 opacity={selectedFilter === 'SAVINGS' ? 1 : 0.3}
               />
               <circle
-                cx="40"
-                cy="40"
-                r="12"
+                cx="56"
+                cy="56"
+                r="14"
                 stroke={COLORS.SAVINGS}
-                strokeWidth="4"
+                strokeWidth="8"
                 fill="none"
-                strokeDasharray={`${savingsPercent * 0.75} ${
-                  75 - savingsPercent * 0.75
+                strokeDasharray={`${savingsPercent * 0.88} ${
+                  88 - savingsPercent * 0.88
                 }`}
                 strokeLinecap="round"
                 opacity={selectedFilter === 'SAVINGS' ? 1 : 0.3}
@@ -949,7 +831,10 @@ function ExpenseTrackerContent() {
       </div>
 
       {/* Chat Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-6">
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-4 pb-4 space-y-6"
+      >
         {messages.map((message) => {
           const CategoryIcon = message.parsedData
             ? getCategoryIcon(message.parsedData.category)

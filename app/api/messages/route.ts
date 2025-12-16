@@ -7,7 +7,6 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 async function parseLLMResponse(text: string) {
   try {
-    console.log('🤖 Calling Gemini LLM for:', text);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
     const prompt = `From the message below, extract the following as JSON:
@@ -34,7 +33,6 @@ Important: Return ONLY valid JSON, no markdown formatting, no explanatory text.`
     const jsonString = cleanText.slice(jsonStart, jsonEnd);
 
     const parsed = JSON.parse(jsonString);
-    console.log('✅ LLM parsed successfully:', parsed);
     return parsed;
   } catch (error) {
     console.error('❌ LLM Parse Error:', error);
@@ -169,12 +167,8 @@ async function postHandler(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    console.log('💾 Attempting to save to MongoDB:', message);
-
     const collection = await getCollection(COLLECTIONS.MESSAGES);
     const result = await collection.insertOne(message);
-
-    console.log('✅ MongoDB insert successful! ID:', result.insertedId);
 
     return NextResponse.json({
       success: true,
